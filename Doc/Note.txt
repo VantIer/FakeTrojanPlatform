@@ -1,0 +1,94 @@
+ 3.4.2.  BLOCK MODE
+         The file is transmitted as a series of data blocks preceded by
+         one or more header bytes.  The header bytes contain a count
+         field, and descriptor code.  The count field indicates the
+         total length of the data block in bytes, thus marking the
+         beginning of the next data block (there are no filler bits).
+         The descriptor code defines:  last block in the file (EOF) last
+         block in the record (EOR), restart marker (see the Section on
+         Error Recovery and Restart) or suspect data (i.e., the data
+         being transferred is suspected of errors and is not reliable).
+         This last code is NOT intended for error control within FTP.
+         It is motivated by the desire of sites exchanging certain types
+         of data (e.g., seismic or weather data) to send and receive all
+         the data despite local errors (such as "magnetic tape read
+         errors"), but to indicate in the transmission that certain
+         portions are suspect).  Record structures are allowed in this
+         mode, and any representation type may be used.
+         The header consists of the three bytes.  Of the 24 bits of
+         header information, the 16 low order bits shall represent byte
+         count, and the 8 high order bits shall represent descriptor
+         codes as shown below
+         
+         Block Header
+            +----------------+----------------+----------------+
+            | Descriptor     |    Byte Count                   |
+            |         8 bits |                      16 bits    |
+            +----------------+----------------+----------------+
+         The descriptor codes are indicated by bit flags in the
+         descriptor byte.  Four codes have been assigned, where each
+         code number is the decimal value of the corresponding bit in
+         the byte.
+            Code     Meaning
+             128     End of data block is EOR
+              64     End of data block is EOF
+              32     Suspected errors in data block
+              16     Data block is a restart marker
+         With this encoding, more than one descriptor coded condition
+         may exist for a particular block.  As many bits as necessary
+         may be flagged.
+         The restart marker is embedded in the data stream as an
+         integral number of 8-bit bytes representing printable
+         characters in the language being used over the control
+         connection (e.g., default--NVT-ASCII).  <SP> (Space, in the
+         appropriate language) must not be used WITHIN a restart marker.
+         For example, to transmit a six-character marker, the following
+         would be sent:
+            +--------+--------+--------+
+            |Descrptr|  Byte count     |
+            |code= 16|             = 6 |
+            +--------+--------+--------+
+            +--------+--------+--------+
+            | Marker | Marker | Marker |
+            | 8 bits | 8 bits | 8 bits |
+            +--------+--------+--------+
+            +--------+--------+--------+
+            | Marker | Marker | Marker |
+            | 8 bits | 8 bits | 8 bits |
+            +--------+--------+--------+
+            
+ COMPRESSED MODE
+         There are three kinds of information to be sent:  regular data,
+         sent in a byte string; compressed data, consisting of
+         replications or filler; and control information, sent in a
+         two-byte escape sequence.  If n>0 bytes (up to 127) of regular
+         data are sent, these n bytes are preceded by a byte with the
+         left-most bit set to 0 and the right-most 7 bits containing the
+         number n.
+         Byte string:
+             1       7                8                     8
+            +-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+     +-+-+-+-+-+-+-+-+
+            |0|       n     | |    d(1)       | ... |      d(n)     |
+            +-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+     +-+-+-+-+-+-+-+-+
+                                          ^             ^
+                                          |---n bytes---|
+                                              of data
+            String of n data bytes d(1),..., d(n)
+            Count n must be positive.
+         To compress a string of n replications of the data byte d, the
+         following 2 bytes are sent:
+         Replicated Byte:
+              2       6               8
+            +-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+            |1 0|     n     | |       d       |
+            +-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+         A string of n filler bytes can be compressed into a single
+         byte, where the filler byte varies with the representation
+         type.  If the type is ASCII or EBCDIC the filler byte is <SP>
+         (Space, ASCII code 32, EBCDIC code 64).  If the type is Image
+         or Local byte the filler is a zero byte.
+         Filler String:
+              2       6
+            +-+-+-+-+-+-+-+-+
+            |1 1|     n     |
+            +-+-+-+-+-+-+-+-+
